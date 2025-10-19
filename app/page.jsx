@@ -1,4 +1,6 @@
+'use client'
 import React from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
@@ -24,6 +26,18 @@ import { faqs } from "../data/faqs";
 
 
 export default function LandingPage() {
+  const router = useRouter();
+  // Helper to map feature title to custom route
+  const getFeatureRoute = (title) => {
+    // Example: "AI-Powered Career Guidance" => "ai-career"
+    // Customize this mapping as needed
+    if (title === "AI-Powered Career Guidance") return "/ai-cover-letter";
+    if (title === "Interview Preparation") return "/interview";
+    if (title === "Industry Insights") return "/dashboard";
+    if (title === "Smart Resume Creation") return "/resume";
+    // Fallback: slugify
+    return "/" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  };
   return (
     <>
       <div className="grid-background"></div>
@@ -45,7 +59,19 @@ export default function LandingPage() {
               >
                 <CardContent className="pt-6 text-center flex flex-col items-center">
                   <div className="flex flex-col items-center justify-center">
-                    {feature.icon}
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="cursor-pointer"
+                      onClick={() => router.push(getFeatureRoute(feature.title))}
+                      onKeyPress={e => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          router.push(getFeatureRoute(feature.title));
+                        }
+                      }}
+                    >
+                      {feature.icon}
+                    </span>
                     <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
                     <p className="text-muted-foreground">
                       {feature.description}
