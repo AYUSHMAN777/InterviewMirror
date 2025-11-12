@@ -2,11 +2,230 @@
 
 import { db } from "../lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from "@google/genai"; // Using your existing import
+import { revalidatePath } from "next/cache";
 
+// Using your existing 'ai' constant initialization
 const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY
+  apiKey: process.env.GEMINI_API_KEY || ""
 });
+
+// --- Helper function to generate questions (using @google/genai) ---
+async function generateAIQuestions(topic, level, existingQuestions = []) {
+  try {
+    const model = "gemini-2.0-flash"; // Using a model that supports JSON generation
+    
+    const prompt = `
+      You are an expert technical interviewer. Generate 5 unique interview questions for a ${level} ${topic} position.
+      Provide a simple one-sentence follow-up question for each.
+      Do not repeat any of these previous questions: ${existingQuestions.join(", ")}.
+      
+      Return ONLY a JSON object in this exact format:
+      {
+        "questions": [
+          {
+            "question": "string",
+            "followUp": "string"
+          }
+        ]
+      }
+    `;
+
+    const response = await ai.models.generateContent({
+      model: model,
+      contents: prompt,
+      generationConfig: {
+        responseType: "json", // Request JSON output
+      },
+    });
+
+    const data = JSON.parse(response.text); 
+    return data.questions; 
+
+  } catch (error) {
+    console.error("Error generating AI questions:", error);
+    // Fallback to mock data on error
+    return [
+      { question: `Tell me about your experience with ${topic}?`, followUp: "Can you give a specific example?" },
+      { question: "What is a project you are proud of?", followUp: "What was the biggest challenge?" },
+    ];
+  }
+}
+
+// --- Helper function to generate feedback (for VOICE) ---
+async function generateAIFeedback(transcriptMessages) {
+  try {
+    const model = "gemini-2.0-flash";
+    const transcriptText = transcriptMessages.map(msg => `${msg.role}: ${msg.message}`).join("\n");
+    
+    if (transcriptText.trim().length === 0) {
+        throw new Error("Transcript is empty");
+    }
+
+    const prompt = `
+      You are an expert interview coach. Analyze the following interview transcript.
+      Provide constructive feedback and a score (from 1 to 10) for each question answered by the user.
+      Also provide an overall summary and a final score from 1-10.
+      The user's answers are from the 'user' role.
+      
+      Return ONLY a JSON object in this exact format:
+      {
+        "totalScore": 10,
+        "finalAssessment": "string",
+        "individualFeedback": [
+          {
+            "question": "string",
+            "answer": "string",
+            "feedback": "string",
+            "score": 10
+          }
+        ]
+      }
+      
+      Transcript:
+      ${transcriptText}
+    `;
+
+    const response = await ai.models.generateContent({
+      model: model,
+      contents: prompt,
+      generationConfig: {
+        responseType: "json",
+      },
+    });
+    
+    const data = JSON.parse(response.text);
+    return data;
+
+  } catch (error) {
+    console.error("Error generating AI feedback:", error);
+    // Fallback to mock data on error
+    return {
+      totalScore: 7.5,
+      finalAssessment: "Good effort! You provided solid answers but could be more specific with your examples. (AI analysis fallback)",
+      individualFeedback: [
+        { question: "Transcript was unclear or empty", answer: "N/A", feedback: "AI analysis failed or transcript was empty.", score: 0 }
+      ]
+    };
+  }
+}
+
+// ===============================================
+// === NEW SERVER ACTION 1: STARTVOICEINTERVIEW ===
+// ===============================================
+export async function startVoiceInterview(formData) {
+  try {
+    const { userId: clerkUserId } = auth();
+    if (!clerkUserId) {
+      return { error: "User not authenticated" };
+    }
+
+    const user = await db.user.findUnique({ where: { clerkUserId } });
+    if (!user) {
+      return { error: "User not found" };
+    }
+
+    const topic = formData.get("topic") || user.industry || "General";
+    const level = "Mid-level"; 
+
+    const questions = await generateAIQuestions(topic, level, []); 
+    if (!questions || questions.length === 0) {
+      return { error: "Failed to generate interview questions." };
+    }
+
+    const newAssessment = await db.assessment.create({
+      data: {
+        userId: user.id,
+        type: "VOICE", // <-- HERE! We explicitly set the type
+        category: topic,
+        questions: questions, 
+        quizScore: 0,
+        improvementTip: "Interview in progress...",
+        transcript: [], 
+        feedback: {},   
+      },
+    });
+
+    revalidatePath("/interview");
+
+    return {
+      success: true,
+      assessmentId: newAssessment.id,
+      questions: newAssessment.questions, 
+    };
+
+  } catch (error) {
+    console.error("Error starting voice interview:", error);
+    return { error: `An unexpected error occurred: ${error.message}` };
+  }
+}
+
+// ========================================================
+// === NEW SERVER ACTION 2: SAVEVOICEINTERVIEWFEEDBACK ===
+// ========================================================
+export async function saveVoiceInterviewFeedback(assessmentId, transcriptMessages) {
+  try {
+    if (!assessmentId) return { error: "Assessment ID is missing" };
+    if (!transcriptMessages || !Array.isArray(transcriptMessages)) return { error: "Transcript data is missing or invalid" };
+
+    if (transcriptMessages.length === 0) {
+       await db.assessment.update({
+          where: { id: assessmentId },
+          data: {
+            improvementTip: "Interview ended before any conversation was recorded.",
+            quizScore: 0, 
+            feedback: { 
+              totalScore: 0,
+              finalAssessment: "Interview ended before any conversation was recorded.",
+              individualFeedback: []
+            },
+          },
+        });
+        console.warn(`Assessment ${assessmentId}: Saved empty transcript.`);
+        return { success: true, assessmentId: assessmentId }; 
+    }
+
+    const aiFeedback = await generateAIFeedback(transcriptMessages);
+
+    const updatedAssessment = await db.assessment.update({
+      where: { id: assessmentId },
+      data: {
+        transcript: transcriptMessages,     
+        feedback: aiFeedback,               
+        quizScore: aiFeedback.totalScore,   
+        improvementTip: aiFeedback.finalAssessment, 
+      },
+    });
+
+    revalidatePath("/interview");
+    
+    return { success: true, assessmentId: updatedAssessment.id };
+
+  } catch (error) {
+    console.error(`Error saving feedback for assessment ${assessmentId}:`, error);
+    try {
+        await db.assessment.update({
+          where: { id: assessmentId },
+          data: {
+            improvementTip: `Failed to process feedback: ${error.message}`,
+            transcript: transcriptMessages || [], 
+             feedback: { 
+              totalScore: 0,
+              finalAssessment: `Failed to generate feedback: ${error.message}`,
+              individualFeedback: []
+            },
+          },
+        });
+    } catch (updateError) {
+        console.error(`Failed to update assessment ${assessmentId} with error status:`, updateError);
+    }
+    return { error: `Failed to save feedback: ${error.message}` };
+  }
+}
+
+// =====================================================
+// === YOUR EXISTING FUNCTIONS (Slightly improved) ===
+// =====================================================
 export async function generateQuiz() {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
@@ -135,7 +354,7 @@ export async function saveQuizResult(questions, answers, score) {//questions is 
     console.error("Error saving quiz result:", error);
     throw new Error("Failed to save quiz result");
   }
-}
+} 
 
 export async function getAssessments() {
   const { userId } = await auth();

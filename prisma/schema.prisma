@@ -33,10 +33,29 @@ model Assessment {
   id            String    @id @default(cuid())
   userId        String
   user          User      @relation(fields: [userId], references: [id])
-  quizScore     Float     // Overall quiz score
-  questions     Json[]    // Array of {question, answer, userAnswer, isCorrect}
-  category      String    // "Technical", "Behavioral", etc.
-  improvementTip String?  // AI-generated improvement tip
+  // NEW FIELD: To distinguish between assessment types
+  // "QUIZ" for your existing text quizzes
+  // "VOICE" for the new Vapi agent interviews
+  type          String    @default("QUIZ")
+
+  category      String    // "Technical", "Behavioral", etc. (Used by both)
+  quizScore     Float     // Overall score (Used by both)
+  improvementTip String?  // Top-level summary (Used by both)
+
+  // --- QUIZ-specific fields ---
+  // For "QUIZ" type: Array of {question, answer, userAnswer, isCorrect}
+  // For "VOICE" type: We can store the initial list of questions here
+  questions     Json[]
+
+  // --- NEW VOICE-specific fields ---
+  // For "VOICE" type: The full conversational transcript
+  // Array of { role: 'user' | 'assistant', message: '...' }
+  transcript    Json?
+  
+  // For "VOICE" type: The full AI-generated feedback object
+  // { totalScore, finalAssessment, individualFeedback: [...] }
+  feedback      Json?
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
