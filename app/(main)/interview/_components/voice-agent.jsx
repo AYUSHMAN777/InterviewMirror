@@ -31,66 +31,60 @@ function SubmitButton() {
 // --- Main Voice Agent Component ---
 export function VoiceAgent() {
   const router = useRouter();
-  
-  // Vapi state
   const [vapi, setVapi] = useState(null);
   const [callStatus, setCallStatus] = useState("idle"); // idle, starting, active, finished
   const [isMuted, setIsMuted] = useState(false);
-  
-  // Interview data state
-  const [assessmentId, setAssessmentId] =useState(null);
+  const [assessmentId, setAssessmentId] = useState(null);
   const [currentMessage, setCurrentMessage] = useState(null);
-  
-  // UseRef for transcript to avoid re-renders
-  // We will store all messages here
-  const transcriptRef = useRef([]);
+  const transcriptRef = useRef([]); // Stores the full transcript { role, message }
 
-  // This function is called by the form's 'action'
-  // It's a client-side function that calls our server action
+  // This is a CLIENT function that calls our SERVER ACTION
   const handleStartInterview = async (formData) => {
     setCallStatus("starting");
-    
-    // 1. Call the server action to create the assessment in our DB
+
+    // 1. Call the Server Action to create the Assessment in our DB
     const result = await startVoiceInterview(formData);
+    // in result we get assessmentId and questions;
 
     if (result.error) {
       toast.error("Failed to start interview", { description: result.error });
       setCallStatus("idle");
       return;
     }
-    
-    // 2. We got the questions and assessmentId, now start Vapi call
+
+    // 2. The action was successful. Save the ID
     setAssessmentId(result.assessmentId);
-    
-    // 3. Initialize and start Vapi
+
+    // 3. Now, start the Vapi call using the questions from the action
     startVapiCall(result.assessmentId, result.questions);
   };
 
   // This function initializes and starts the Vapi call
   const startVapiCall = (newAssessmentId, newQuestions) => {
-    // Make sure VAPI_PUBLIC_KEY is in your .env.local
-    const vapiInstance = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY);
+    // 1. Initialize Vapi using the Token from your .env.local file
+    const vapiInstance = new Vapi(process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN);
     setVapi(vapiInstance);
-    
-    // --- 1. Set up Vapi Listeners ---
-    
+
+    // --- 2. Set up Vapi Listeners ---
     vapiInstance.on("call-start", () => {
       setCallStatus("active");
       toast.success("Interview started! Good luck.");
-      transcriptRef.current = []; // Clear transcript
+      transcriptRef.current = []; // Clear transcript at the start of a call
     });
 
     vapiInstance.on("call-end", async () => {
       setCallStatus("finished");
       toast.info("Interview ended. Saving your feedback...");
-      
-      // Call the server action to save the feedback
+
+      // 5. When call ends, get the full transcript
       const finalTranscript = transcriptRef.current;
+
+      // 6. Call our server action to save the transcript and feedback
       const result = await saveVoiceInterviewFeedback(newAssessmentId, finalTranscript);
-      
+
       if (result.error) {
         toast.error("Failed to save feedback", { description: result.error });
-        router.push("/interview"); // Go back even if save fails
+        router.push("/interview"); // Go back to interview page even if save fails
       } else {
         toast.success("Feedback saved!");
         // We will create this feedback page in the next step
@@ -99,15 +93,15 @@ export function VoiceAgent() {
     });
 
     vapiInstance.on("message", (message) => {
-      // 'transcript' message is the final user/assistant speech
-      if (message.type === "transcript") {
+      // 4. While the call is active, log the conversation
+      if (message.type === "transcript" && message.transcriptType === "final") {
         const role = message.role;
         const text = message.transcript;
-        
-        // Add to our transcript log
+
+        // Add to transcript ref
         transcriptRef.current.push({ role, message: text });
-        
-        // Show the latest message on screen
+
+        // Update live message for UI
         setCurrentMessage({ role, text });
       }
     });
@@ -115,43 +109,30 @@ export function VoiceAgent() {
     vapiInstance.on("error", (e) => {
       console.error(e);
       toast.error("An error occurred during the call", { description: e.message });
-      setCallStatus("idle");
+      setCallStatus("idle"); // Reset UI on error
     });
-    //how vapi works
-    // Think of it like a voice router that:
-    // Captures what you say (audio input)
-    // Converts it to text (speech-to-text)
-    // Sends the text to your AI model (Gemini, GPT, etc.)
-    // Takes the model’s text response
-    // Converts it back to speech (text-to-speech)
-    // Streams it back to your speakers — in real time
-    // --- 2. Start the Vapi Call ---
-    vapiInstance.start({
-      model: {
-        provider: "google", 
-        model: "gemini-1.5-flash",
-        // This system prompt tells the AI how to behave
-        systemPrompt: `You are an expert technical interviewer named 'Alex'. Your goal is to conduct a professional and helpful mock interview.
-        The user's interview topic and a list of questions are provided in the 'variables'.
-        1. Start by introducing yourself ("Hi, I'm Alex") and stating the interview topic.
-        2. Ask the questions from the 'questions' variable one by one. Each item has a "question" and a "followUp".
-        3. After the user answers a question, DO NOT give feedback.
-        4. Simply acknowledge their answer ("Got it, thank you.", "Okay, thanks for sharing.") and then ask the corresponding 'followUp' question.
-        5. After they answer the follow-up, acknowledge it and move to the next main question.
-        6. Be friendly, professional, and conversational.
-        7. After you have asked ALL questions, say "That's all the questions I have. Thank you for your time. Your feedback report will be generated now. Have a great day!" and then end the call.`,
-      },
-      voice: "jennifer-playht", // A good, clear voice
-      variables: {
-        assessmentId: newAssessmentId,
-        questions: JSON.stringify(newQuestions), // Send questions to the AI
+
+    // --- 3. Format the Questions ---
+    // We format the questions as a single string to pass to the assistant
+    const formattedQuestions = newQuestions.map((q, i) =>
+      `Question ${i + 1}: ${q.question}\nFollow-up ${i + 1}: ${q.followUp}`
+    ).join("\n\n"); // Join questions with a double newline
+
+    // --- 4. Start the Vapi Call ---
+    // This uses the Assistant ID you created on the Vapi dashboard
+    vapiInstance.start(
+      process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID, // 1. The ID as the first argument
+      {
+        variableValues: { // 2. The key is 'variableValues'
+          questions: formattedQuestions
+        }
       }
-    });
+    );
   };
 
   // --- Call Control Functions ---
   const handleEndCall = () => {
-    vapi?.stop(); // This will trigger the 'call-end' listener
+    vapi?.stop(); // This will trigger the "call-end" event
   };
 
   const toggleMute = () => {
@@ -160,10 +141,10 @@ export function VoiceAgent() {
     vapi.setMuted(newMutedState);
     setIsMuted(newMutedState);
   };
-  
+
   // --- UI Rendering ---
 
-  // Show this UI when the call is active or starting
+  // In-Call and Connecting UI
   if (callStatus === "active" || callStatus === "starting") {
     return (
       <div className="border rounded-lg p-6 bg-card">
@@ -171,8 +152,7 @@ export function VoiceAgent() {
           <p className="text-lg font-medium">
             {callStatus === "starting" ? "Connecting..." : "Interview in Progress"}
           </p>
-          
-          {/* Transcript Display */}
+
           <div className="w-full h-24 p-2 border rounded-md bg-background overflow-y-auto">
             {currentMessage ? (
               <p>
@@ -186,7 +166,6 @@ export function VoiceAgent() {
             )}
           </div>
 
-          {/* Call Controls */}
           <div className="flex gap-4">
             <Button
               onClick={toggleMute}
@@ -210,7 +189,7 @@ export function VoiceAgent() {
     );
   }
 
-  // Show this UI before the call starts ("idle" or "finished")
+  // Default "Start" UI
   return (
     <div className="border rounded-lg p-6 bg-card">
       <form action={handleStartInterview} className="space-y-4">
@@ -233,4 +212,3 @@ export function VoiceAgent() {
     </div>
   );
 }
-

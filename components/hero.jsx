@@ -56,9 +56,9 @@ const HeroSection = () => {
         <div className="hero-image-wrapper mt-5 md:mt-0 ">
           <div ref={imageRef} className="hero-image ">
             <Image
-              src="/Banner Image.png"
-              width={1000}
-              height={600}
+              src="/interview mirror background image.png"
+              width={600}
+              height={200}
               alt="Banner Preview"
               className="rounded-lg shadow-2xl border mx-auto"
               priority

@@ -14,7 +14,7 @@ const ai = new GoogleGenAI({
 async function generateAIQuestions(topic, level, existingQuestions = []) {
   try {
     const model = "gemini-2.0-flash"; // Using a model that supports JSON generation
-    
+
     const prompt = `
       You are an expert technical interviewer. Generate 5 unique interview questions for a ${level} ${topic} position.
       Provide a simple one-sentence follow-up question for each.
@@ -34,13 +34,19 @@ async function generateAIQuestions(topic, level, existingQuestions = []) {
     const response = await ai.models.generateContent({
       model: model,
       contents: prompt,
-      generationConfig: {
-        responseType: "json", // Request JSON output
-      },
+      // generationConfig: {
+      //   responseType: "json", // Request JSON output
+      // },
     });
 
-    const data = JSON.parse(response.text); 
-    return data.questions; 
+
+    const text = response.text;
+    const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
+    const data = JSON.parse(cleanedText);
+
+    // console.log("Generated Questions:", data);
+    // console.log(data.questions);
+    return data.questions;
 
   } catch (error) {
     console.error("Error generating AI questions:", error);
@@ -57,9 +63,9 @@ async function generateAIFeedback(transcriptMessages) {
   try {
     const model = "gemini-2.0-flash";
     const transcriptText = transcriptMessages.map(msg => `${msg.role}: ${msg.message}`).join("\n");
-    
+
     if (transcriptText.trim().length === 0) {
-        throw new Error("Transcript is empty");
+      throw new Error("Transcript is empty");
     }
 
     const prompt = `
@@ -89,12 +95,16 @@ async function generateAIFeedback(transcriptMessages) {
     const response = await ai.models.generateContent({
       model: model,
       contents: prompt,
-      generationConfig: {
-        responseType: "json",
-      },
+      // generationConfig: {
+      //   responseType: "json",
+      // },
     });
-    
-    const data = JSON.parse(response.text);
+
+    const text = response.text;
+    const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
+    const data = JSON.parse(cleanedText);
+
+    // console.log(data);
     return data;
 
   } catch (error) {
@@ -115,20 +125,20 @@ async function generateAIFeedback(transcriptMessages) {
 // ===============================================
 export async function startVoiceInterview(formData) {
   try {
-    const { userId: clerkUserId } = auth();
-    if (!clerkUserId) {
-      return { error: "User not authenticated" };
-    }
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
 
-    const user = await db.user.findUnique({ where: { clerkUserId } });
-    if (!user) {
-      return { error: "User not found" };
-    }
+    const user = await db.user.findUnique({
+      where: { clerkUserId: userId },
+    });
+
+    if (!user) throw new Error("User not found");
+
 
     const topic = formData.get("topic") || user.industry || "General";
-    const level = "Mid-level"; 
+    const level = "Mid-level";
 
-    const questions = await generateAIQuestions(topic, level, []); 
+    const questions = await generateAIQuestions(topic, level, []);
     if (!questions || questions.length === 0) {
       return { error: "Failed to generate interview questions." };
     }
@@ -138,11 +148,11 @@ export async function startVoiceInterview(formData) {
         userId: user.id,
         type: "VOICE", // <-- HERE! We explicitly set the type
         category: topic,
-        questions: questions, 
+        questions: questions,
         quizScore: 0,
         improvementTip: "Interview in progress...",
-        transcript: [], 
-        feedback: {},   
+        transcript: [],
+        feedback: {},
       },
     });
 
@@ -151,7 +161,7 @@ export async function startVoiceInterview(formData) {
     return {
       success: true,
       assessmentId: newAssessment.id,
-      questions: newAssessment.questions, 
+      questions: newAssessment.questions,
     };
 
   } catch (error) {
@@ -169,55 +179,55 @@ export async function saveVoiceInterviewFeedback(assessmentId, transcriptMessage
     if (!transcriptMessages || !Array.isArray(transcriptMessages)) return { error: "Transcript data is missing or invalid" };
 
     if (transcriptMessages.length === 0) {
-       await db.assessment.update({
-          where: { id: assessmentId },
-          data: {
-            improvementTip: "Interview ended before any conversation was recorded.",
-            quizScore: 0, 
-            feedback: { 
-              totalScore: 0,
-              finalAssessment: "Interview ended before any conversation was recorded.",
-              individualFeedback: []
-            },
+      await db.assessment.update({
+        where: { id: assessmentId },
+        data: {
+          improvementTip: "Interview ended before any conversation was recorded.",
+          quizScore: 0,
+          feedback: {
+            totalScore: 0,
+            finalAssessment: "Interview ended before any conversation was recorded.",
+            individualFeedback: []
           },
-        });
-        console.warn(`Assessment ${assessmentId}: Saved empty transcript.`);
-        return { success: true, assessmentId: assessmentId }; 
+        },
+      });
+      console.warn(`Assessment ${assessmentId}: Saved empty transcript.`);
+      return { success: true, assessmentId: assessmentId };
     }
 
     const aiFeedback = await generateAIFeedback(transcriptMessages);
-
+    console.log(aiFeedback);
     const updatedAssessment = await db.assessment.update({
       where: { id: assessmentId },
       data: {
-        transcript: transcriptMessages,     
-        feedback: aiFeedback,               
-        quizScore: aiFeedback.totalScore,   
-        improvementTip: aiFeedback.finalAssessment, 
+        transcript: transcriptMessages,
+        feedback: aiFeedback,
+        quizScore: aiFeedback.totalScore,
+        improvementTip: aiFeedback.finalAssessment,
       },
     });
 
     revalidatePath("/interview");
-    
+
     return { success: true, assessmentId: updatedAssessment.id };
 
   } catch (error) {
     console.error(`Error saving feedback for assessment ${assessmentId}:`, error);
     try {
-        await db.assessment.update({
-          where: { id: assessmentId },
-          data: {
-            improvementTip: `Failed to process feedback: ${error.message}`,
-            transcript: transcriptMessages || [], 
-             feedback: { 
-              totalScore: 0,
-              finalAssessment: `Failed to generate feedback: ${error.message}`,
-              individualFeedback: []
-            },
+      await db.assessment.update({
+        where: { id: assessmentId },
+        data: {
+          improvementTip: `Failed to process feedback: ${error.message}`,
+          transcript: transcriptMessages || [],
+          feedback: {
+            totalScore: 0,
+            finalAssessment: `Failed to generate feedback: ${error.message}`,
+            individualFeedback: []
           },
-        });
+        },
+      });
     } catch (updateError) {
-        console.error(`Failed to update assessment ${assessmentId} with error status:`, updateError);
+      console.error(`Failed to update assessment ${assessmentId} with error status:`, updateError);
     }
     return { error: `Failed to save feedback: ${error.message}` };
   }
@@ -241,11 +251,9 @@ export async function generateQuiz() {
   if (!user) throw new Error("User not found");
 
   const prompt = `
-    Generate 10 technical interview questions for a ${
-      user.industry
-    } professional${
-    user.skills?.length ? ` with expertise in ${user.skills.join(", ")}` : ""
-  }.
+    Generate 10 technical interview questions for a ${user.industry
+    } professional${user.skills?.length ? ` with expertise in ${user.skills.join(", ")}` : ""
+    }.
     
     Each question should be multiple choice with 4 options.
     
@@ -345,7 +353,7 @@ export async function saveQuizResult(questions, answers, score) {//questions is 
         category: "Technical",
         improvementTip,
       },
-     
+
     });
 
     // console.log(data);
@@ -354,7 +362,7 @@ export async function saveQuizResult(questions, answers, score) {//questions is 
     console.error("Error saving quiz result:", error);
     throw new Error("Failed to save quiz result");
   }
-} 
+}
 
 export async function getAssessments() {
   const { userId } = await auth();
