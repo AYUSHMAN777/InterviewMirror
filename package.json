@@ -26,6 +26,8 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tabs": "^1.1.13",
     "@uiw/react-md-editor": "^4.0.8",
+    "@upstash/ratelimit": "^2.0.7",
+    "@upstash/redis": "^1.35.6",
     "@vapi-ai/server-sdk": "^0.10.2",
     "@vapi-ai/web": "^2.5.0",
     "ai": "^5.0.82",

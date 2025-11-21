@@ -4,7 +4,7 @@ import { db } from "../lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { GoogleGenAI } from "@google/genai"; // Using your existing import
 import { revalidatePath } from "next/cache";
-
+import { redis } from "../lib/redis";
 // Using your existing 'ai' constant initialization
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || ""
@@ -155,7 +155,7 @@ export async function startVoiceInterview(formData) {
         feedback: {},
       },
     });
-
+    await redis.del(`assessments:${userId}`);
     revalidatePath("/interview");
 
     return {
@@ -175,6 +175,7 @@ export async function startVoiceInterview(formData) {
 // ========================================================
 export async function saveVoiceInterviewFeedback(assessmentId, transcriptMessages) {
   try {
+    const { userId } = await auth();
     if (!assessmentId) return { error: "Assessment ID is missing" };
     if (!transcriptMessages || !Array.isArray(transcriptMessages)) return { error: "Transcript data is missing or invalid" };
 
@@ -206,7 +207,7 @@ export async function saveVoiceInterviewFeedback(assessmentId, transcriptMessage
         improvementTip: aiFeedback.finalAssessment,
       },
     });
-
+    await redis.del(`assessments:${userId}`);
     revalidatePath("/interview");
 
     return { success: true, assessmentId: updatedAssessment.id };
@@ -304,7 +305,7 @@ export async function saveQuizResult(questions, answers, score) {//questions is 
     isCorrect: q.correctAnswer === answers[index],
     explanation: q.explanation,
   }));
-  console.log(questionResults)
+  // console.log(questionResults)
 
   // Get wrong answers
   const wrongAnswers = questionResults.filter((q) => !q.isCorrect);
@@ -337,7 +338,7 @@ export async function saveQuizResult(questions, answers, score) {//questions is 
       });
 
       improvementTip = tipResponse.text.trim();
-      console.log(improvementTip);
+      // console.log(improvementTip);
     } catch (error) {
       console.error("Error generating improvement tip:", error);
       // Continue without improvement tip if generation fails
@@ -355,7 +356,7 @@ export async function saveQuizResult(questions, answers, score) {//questions is 
       },
 
     });
-
+    await redis.del(`assessments:${userId}`);
     // console.log(data);
     return assessment;
   } catch (error) {
@@ -373,8 +374,19 @@ export async function getAssessments() {
   });
 
   if (!user) throw new Error("User not found");
+  const cacheKey = `assessments:${userId}`;
 
   try {
+    // 1. Try to fetch from Redis
+    const cachedAssessments = await redis.get(cacheKey);
+    if (cachedAssessments) {
+      console.log(`CACHE HIT: Assessments for ${userId}`);
+      return cachedAssessments;
+    }
+
+    console.log(`CACHE MISS: Assessments for ${userId}`);
+
+    // 2. If miss, fetch from Database
     const assessments = await db.assessment.findMany({
       where: {
         userId: user.id,
@@ -383,6 +395,7 @@ export async function getAssessments() {
         createdAt: "asc",
       },
     });
+    await redis.set(cacheKey, assessments, { ex: 3600 });
 
     return assessments;
   } catch (error) {
