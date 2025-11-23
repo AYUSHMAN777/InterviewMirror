@@ -5,10 +5,13 @@ import { auth } from "@clerk/nextjs/server";
 import { GoogleGenAI } from "@google/genai"; // Using your existing import
 import { revalidatePath } from "next/cache";
 import { redis } from "../lib/redis";
+import { Resend } from "resend";
 // Using your existing 'ai' constant initialization
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || ""
 });
+// Initialize Resend 
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 // --- Helper function to generate questions (using @google/genai) ---
 async function generateAIQuestions(topic, level, existingQuestions = []) {
@@ -206,8 +209,32 @@ export async function saveVoiceInterviewFeedback(assessmentId, transcriptMessage
         quizScore: aiFeedback.totalScore,
         improvementTip: aiFeedback.finalAssessment,
       },
+      include: { // <--- IMPORTANT: Fetch the user data so we can get their email(for Resend)
+        user: true
+      }
     });
-    await redis.del(`assessments:${userId}`);
+    // Send feedback email via Resend
+    if (updatedAssessment.user?.email) {
+      await resend.emails.send({
+        from: 'InterviewMirror <onboarding@resend.dev>', // Use your verified domain or this test one
+        to: updatedAssessment.user.email,
+        subject: `Interview Feedback: ${aiFeedback.totalScore}/10`,
+        html: `
+                <h1>Your Interview Feedback is Ready!</h1>
+                <p>Great job completing your mock interview. Here is your summary:</p>
+                <h2>Score: <strong>${aiFeedback.totalScore}/10</strong></h2>
+                <h3>Overall Feedback:</h3>
+                <p>${aiFeedback.finalAssessment}</p>
+                <br />
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/interview/feedback/${assessmentId}">
+                    View Full Detailed Feedback
+                </a>
+            `
+      });
+    }
+    if (userId) {
+      await redis.del(`assessments:${userId}`);
+    }
     revalidatePath("/interview");
 
     return { success: true, assessmentId: updatedAssessment.id };
@@ -344,7 +371,7 @@ export async function saveQuizResult(questions, answers, score) {//questions is 
       // Continue without improvement tip if generation fails
     }
   }
-
+//save to db
   try {
     const assessment = await db.assessment.create({
       data: {
@@ -356,6 +383,26 @@ export async function saveQuizResult(questions, answers, score) {//questions is 
       },
 
     });
+    // --- 4. SEND EMAIL NOTIFICATION ---
+    if (user.email) {
+      const tipText = improvementTip ? `<p><strong>Tip for next time:</strong> ${improvementTip}</p>` : "<p>Perfect score! Keep it up.</p>";
+
+      await resend.emails.send({
+        from: 'InterviewMirror <onboarding@resend.dev>',
+        to: user.email,
+        subject: `Quiz Results: ${score.toFixed(1)}%`,
+        html: `
+                <h1>Your Quiz Results are In!</h1>
+                <p>You just completed a technical quiz. Here is how you did:</p>
+                <h2>Score: <strong>${score.toFixed(1)}%</strong></h2>
+                ${tipText}
+                <br />
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/interview">
+                    View Your Progress
+                </a>
+            `
+      });
+    }
     await redis.del(`assessments:${userId}`);
     // console.log(data);
     return assessment;
