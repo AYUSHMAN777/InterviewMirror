@@ -3,7 +3,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -47,76 +46,97 @@
 }
 
 :root {
-  /* Keep radius as-is */
-  --radius: 0.625rem;
-  /* Replaced modern color functions (oklch/lab) with safe hex / rgba fallbacks
-     to avoid PostCSS / build tooling parsing errors on older processors. */
-  --background: #ffffff; /* white page background */
-  --foreground: #0f172a; /* slate-900 */
+  --radius: 0.6rem;
+
+  /* Light Mode - Clean & Minimal */
+  --background: #ffffff;
+  --foreground: #0f172a; /* Slate 900 */
   --card: #ffffff;
   --card-foreground: #0f172a;
   --popover: #ffffff;
   --popover-foreground: #0f172a;
-  --primary: #2563eb; /* blue-600 */
+  
+  /* Primary uses a slightly darker teal for text contrast on light mode, 
+     or we use your color with dark text. I'll use your color as the base. */
+  --primary: #0d9488; /* Teal 600 - Readable on white */
   --primary-foreground: #ffffff;
-  --secondary: #64748b; /* slate-500 */
-  --secondary-foreground: #0f172a;
-  --muted: #94a3b8;
-  --muted-foreground: #334155;
-  --accent: #0ea5a4; /* teal-400 */
-  --accent-foreground: #ffffff;
-  --destructive: #ef4444; /* red-500 */
-  --border: #e6e7eb;
-  --input: #f8fafc;
-  --ring: #bfdbfe;
-  --chart-1: #2563eb;
-  --chart-2: #7c3aed;
-  --chart-3: #06b6d4;
-  --chart-4: #f97316;
-  --chart-5: #10b981;
+  
+  --secondary: #f0fdfa; /* Teal 50 */
+  --secondary-foreground: #115e59; /* Teal 800 */
+  
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  
+  --accent: #f0fdfa;
+  --accent-foreground: #0f766e;
+  
+  --destructive: #ef4444;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #2dd4bf; /* Your Color */
+
+  /* Charts */
+  --chart-1: #2dd4bf; /* Your Color */
+  --chart-2: #0ea5e9; /* Sky */
+  --chart-3: #14b8a6; /* Teal */
+  --chart-4: #f59e0b; /* Amber */
+  --chart-5: #6366f1; /* Indigo */
+
   --sidebar: #ffffff;
   --sidebar-foreground: #0f172a;
-  --sidebar-primary: #2563eb;
+  --sidebar-primary: #0d9488;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #0ea5a4;
-  --sidebar-accent-foreground: #0f172a;
-  --sidebar-border: rgba(15,23,42,0.1);
-  --sidebar-ring: #bfdbfe;
+  --sidebar-accent: #f0fdfa;
+  --sidebar-accent-foreground: #115e59;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #2dd4bf;
 }
 
 .dark {
-  /* Dark theme fallbacks (hex / rgba) */
-  --background: #0f172a; /* slate-900 */
-  --foreground: #f8fafc; /* almost white */
-  --card: #0b1220;
+  /* Dark Mode - The "Teal Horizon" Look */
+  --background: #020617; /* Slate 950 - Deepest Blue/Black */
+  --foreground: #f8fafc; /* Slate 50 */
+  
+  --card: #0f172a; /* Slate 900 */
   --card-foreground: #f8fafc;
-  --popover: #0b1220;
+  
+  --popover: #0f172a;
   --popover-foreground: #f8fafc;
-  --primary: #60a5fa; /* blue-400 */
-  --primary-foreground: #0f172a;
-  --secondary: #64748b;
+  
+  /* THIS IS YOUR COLOR */
+  --primary: #2dd4bf; 
+  /* Important: Since #2dd4bf is bright, text inside buttons must be dark */
+  --primary-foreground: #020617; 
+  
+  --secondary: #1e293b; /* Slate 800 */
   --secondary-foreground: #f8fafc;
-  --muted: #475569;
-  --muted-foreground: #cbd5e1;
-  --accent: #2dd4bf;
-  --accent-foreground: #0f172a;
-  --destructive: #ef4444;
-  --border: rgba(255,255,255,0.1);
-  --input: rgba(255,255,255,0.08);
-  --ring: #60a5fa;
-  --chart-1: #60a5fa;
-  --chart-2: #a78bfa;
-  --chart-3: #06b6d4;
-  --chart-4: #fb923c;
+  
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  
+  --accent: #111827; /* Gray 900 */
+  --accent-foreground: #2dd4bf;
+  
+  --destructive: #7f1d1d;
+  --border: #1e293b;
+  --input: #1e293b;
+  --ring: #2dd4bf;
+  
+  /* Charts */
+  --chart-1: #2dd4bf;
+  --chart-2: #38bdf8;
+  --chart-3: #818cf8;
+  --chart-4: #fbbf24;
   --chart-5: #34d399;
-  --sidebar: #0b1220;
+  
+  --sidebar: #0f172a;
   --sidebar-foreground: #f8fafc;
-  --sidebar-primary: #60a5fa;
-  --sidebar-primary-foreground: #0f172a;
-  --sidebar-accent: #2dd4bf;
-  --sidebar-accent-foreground: #f8fafc;
-  --sidebar-border: rgba(255,255,255,0.08);
-  --sidebar-ring: #60a5fa;
+  --sidebar-primary: #2dd4bf;
+  --sidebar-primary-foreground: #020617;
+  --sidebar-accent: #1e293b;
+  --sidebar-accent-foreground: #2dd4bf;
+  --sidebar-border: #1e293b;
+  --sidebar-ring: #2dd4bf;
 }
 
 @layer base {
@@ -129,8 +149,9 @@
   }
 }
 
+/* Gradient Utility - Teal to Blue */
 @utility gradient {
-  @apply bg-gradient-to-b from-gray-400 via-gray-200 to-gray-600;
+  @apply bg-gradient-to-r from-[#2dd4bf] via-[#38bdf8] to-[#818cf8];
 }
 
 @utility gradient-title {
@@ -142,7 +163,6 @@
 }
 
 .hero-image {
-  /* transform: rotateX(20deg) scale(0.9) translateY(-50); */
   transform: rotateX(15deg) scale(1);
   transition: transform 0.5s ease-out;
   will-change: transform;
@@ -152,19 +172,25 @@
   transform: rotateX(0deg) scale(1) translateY(40px);
 }
 
+/* Grid Background - Teal Glow */
 .grid-background {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(to right,
-      rgba(255, 255, 255, 0.1) 1px,
-      transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background: 
+    linear-gradient(to right, rgba(45, 212, 191, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(45, 212, 191, 0.05) 1px, transparent 1px);
   background-size: 50px 50px;
   pointer-events: none;
   z-index: -1;
+}
+
+:not(.dark) .grid-background {
+  background: 
+    linear-gradient(to right, rgba(13, 148, 136, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(13, 148, 136, 0.03) 1px, transparent 1px);
 }
 
 .grid-background::before {
@@ -174,5 +200,5 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle, transparent, rgba(0, 0, 0, 0.9));
+  background: radial-gradient(circle, transparent, var(--background));
 }

@@ -19,11 +19,14 @@ async function generateAIQuestions(topic, level, existingQuestions = []) {
     const model = "gemini-2.0-flash"; // Using a model that supports JSON generation
 
     const prompt = `
-      You are an expert technical interviewer. Generate 5 unique interview questions for a ${level} ${topic} position.
-      Provide a simple one-sentence follow-up question for each.
-      Do not repeat any of these previous questions: ${existingQuestions.join(", ")}.
+      You are an expert technical interviewer. 
+      CRITICAL INSTRUCTION: You must ONLY ask questions about the specific topic: "${topic}".
+      Do not ask generic behavioral questions. Do not ask about other technologies unless they are directly related to ${topic}.
       
-      Return ONLY a JSON object in this exact format:
+      Generate 5 technical unique interview questions for a ${level} ${topic} developer.
+      
+      Topic: ${topic}
+      Experience Level: ${level}
       {
         "questions": [
           {
@@ -137,11 +140,22 @@ export async function startVoiceInterview(formData) {
 
     if (!user) throw new Error("User not found");
 
+    // 1. ROBUST TOPIC CHECK
+    const rawTopic = formData.get("topic");
+    const topic = (rawTopic && rawTopic.trim().length > 0) 
+      ? rawTopic.trim() 
+      : (user.industry || "General Technical Interview");
 
-    const topic = formData.get("topic") || user.industry || "General";
-    const level = "Mid-level";
+    console.log("----- STARTING INTERVIEW -----");
+    console.log("User Input Topic:", rawTopic);
+    console.log("Final Selected Topic:", topic);
 
-    const questions = await generateAIQuestions(topic, level, []);
+    // 2. GENERATE QUESTIONS
+    const questions = await generateAIQuestions(topic, "Mid-level", []);
+    
+    // 3. LOG THE QUESTIONS (Check your terminal!)
+    console.log("Generated Questions:", JSON.stringify(questions, null, 2));
+
     if (!questions || questions.length === 0) {
       return { error: "Failed to generate interview questions." };
     }
@@ -149,7 +163,7 @@ export async function startVoiceInterview(formData) {
     const newAssessment = await db.assessment.create({
       data: {
         userId: user.id,
-        type: "VOICE", // <-- HERE! We explicitly set the type
+        type: "VOICE",
         category: topic,
         questions: questions,
         quizScore: 0,
@@ -158,7 +172,7 @@ export async function startVoiceInterview(formData) {
         feedback: {},
       },
     });
-    await redis.del(`assessments:${userId}`);
+
     revalidatePath("/interview");
 
     return {

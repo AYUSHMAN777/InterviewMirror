@@ -118,6 +118,7 @@ export function VoiceAgent() {
       `Question ${i + 1}: ${q.question}\nFollow-up ${i + 1}: ${q.followUp}`
     ).join("\n\n"); // Join questions with a double newline
 
+    console.log("SENDING TO VAPI:", formattedQuestions);
     // --- 4. Start the Vapi Call ---
     // This uses the Assistant ID you created on the Vapi dashboard
     vapiInstance.start(

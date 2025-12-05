@@ -67,7 +67,7 @@ export default function PerformanceChart({ assessments }) {
               <Line
                 type="monotone"
                 dataKey="score"
-                stroke="#2563eb" // Tailwind blue-600
+                stroke="#2dd4bf" // Tailwind teal-400
                 strokeWidth={2}
               />
             </LineChart>

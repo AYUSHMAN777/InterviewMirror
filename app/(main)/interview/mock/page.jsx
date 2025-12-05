@@ -5,7 +5,7 @@ import Quiz from "../_components/quiz";
 
 export default function MockInterviewPage() {
   return (
-    <div className="container mx-auto space-y-4 py-6">
+    <div className="container mx-auto space-y-4 py-6 mt-15">
       <div className="flex flex-col space-y-2 mx-2">
         <Link href="/interview">
           <Button variant="link" className="gap-2 pl-0">

@@ -16,23 +16,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import Image from "next/image";
 import { checkUser } from "../lib/checkuser";
+import Logo from "./logo"; // Import the new Logo component
 
 const Header = async () => {
   await checkUser();
 
   return (
-    <header className="fixed top-0 w-full border-b bg-background/80 backdrop-blur-md z-50 supports-[backdrop-filter]:bg-background/60">
+    <header className="fixed top-0 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl z-50 supports-[backdrop-filter]:bg-background/60">
       <nav className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/">
-          <Image
-            src={"/1644321736953.jpg"}
-            alt="InterviewMirror Logo"
-            width={200}
-            height={60}
-            className="h-12 py-1 w-auto object-contain"
-          />
+          <Logo />
         </Link>
 
         {/* Action Buttons */}
@@ -40,8 +34,8 @@ const Header = async () => {
           <SignedIn>
             <Link href="/dashboard">
               <Button
-                variant="outline"
-                className="hidden md:inline-flex items-center gap-2"
+                //  variant="outline"
+                className="hidden md:inline-flex items-center gap-2 bg-accent text-white hover:text-black hover:bg-white transition-all duration-200 transform hover:scale-105"
               >
                 <LayoutDashboard className="h-4 w-4" />
                 Industry Insights
@@ -54,15 +48,15 @@ const Header = async () => {
             {/* Growth Tools Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button className="flex items-center gap-2">
-                  <StarsIcon className="h-4 w-4" />
+                <Button className="flex items-center gap-2 transition-all duration-200 transform hover:scale-105">
+                  {/* <StarsIcon className="h-4 w-4 text-primary" /> */}
                   <span className="hidden md:block">Growth Tools</span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-48 border-border/50 bg-background/95 backdrop-blur-sm">
                 <DropdownMenuItem asChild>
-                  <Link href="/resume" className="flex items-center gap-2">
+                  <Link href="/resume" className="flex items-center gap-2 cursor-pointer">
                     <FileText className="h-4 w-4" />
                     Build Resume
                   </Link>
@@ -70,14 +64,14 @@ const Header = async () => {
                 <DropdownMenuItem asChild>
                   <Link
                     href="/ai-cover-letter"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 cursor-pointer"
                   >
                     <PenBox className="h-4 w-4" />
                     Cover Letter
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/interview" className="flex items-center gap-2">
+                  <Link href="/interview" className="flex items-center gap-2 cursor-pointer">
                     <GraduationCap className="h-4 w-4" />
                     Interview Prep
                   </Link>
@@ -108,5 +102,6 @@ const Header = async () => {
       </nav>
     </header>
   );
-}
+};
+
 export default Header;

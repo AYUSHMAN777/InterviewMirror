@@ -101,7 +101,7 @@ const DashboardView = ({ insights }) => {
             <CardTitle className="text-sm font-medium">
               Industry Growth
             </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+             <OutlookIcon className={`h-4 w-4 ${outlookColor}`} />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -114,7 +114,7 @@ const DashboardView = ({ insights }) => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Demand Level</CardTitle>
-            <BriefcaseIcon className="h-4 w-4 text-muted-foreground" />
+            <BriefcaseIcon className={`h-4 w-4 ${outlookColor}`}/>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{insights.demandLevel}</div>
@@ -129,7 +129,7 @@ const DashboardView = ({ insights }) => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Top Skills</CardTitle>
-            <Brain className="h-4 w-4 text-muted-foreground" />
+            <Brain className={`h-4 w-4 ${outlookColor}`}/>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-1 mt-[-12px]">

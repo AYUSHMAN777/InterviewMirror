@@ -31,7 +31,7 @@ export default function LandingPage() {
   const getFeatureRoute = (title) => {
     // Example: "AI-Powered Career Guidance" => "ai-career"
     // Customize this mapping as needed
-    if (title === "AI-Powered Career Guidance") return "/ai-cover-letter";
+    if (title === "Build Your Cover Letter") return "/ai-cover-letter";
     if (title === "Interview Preparation") return "/interview";
     if (title === "Industry Insights") return "/dashboard";
     if (title === "Smart Resume Creation") return "/resume";
@@ -55,25 +55,20 @@ export default function LandingPage() {
             {features.map((feature, index) => (
               <Card
                 key={index}
-                className="border-2 hover:border-primary transition-colors duration-300"
+                className="bg-card border-muted hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 h-full"
               >
-                <CardContent className="pt-6 text-center flex flex-col items-center">
-                  <div className="flex flex-col items-center justify-center">
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      className="cursor-pointer"
+                <CardContent className="pt-6 text-center flex flex-col items-center h-full justify-center">
+                  <div className="flex flex-col items-center justify-center space-y-4">
+                    {/* Icon Wrapper with Glow Effect */}
+                    <div 
+                      className="p-3 rounded-full bg-primary/10 ring-1 ring-primary/20 mb-2 cursor-pointer transition-transform duration-300 hover:scale-110"
                       onClick={() => router.push(getFeatureRoute(feature.title))}
-                      onKeyPress={e => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          router.push(getFeatureRoute(feature.title));
-                        }
-                      }}
                     >
                       {feature.icon}
-                    </span>
-                    <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
-                    <p className="text-muted-foreground">
+                    </div>
+                    
+                    <h3 className="text-xl font-bold">{feature.title}</h3>
+                    <p className="text-muted-foreground text-sm">
                       {feature.description}
                     </p>
                   </div>
@@ -134,7 +129,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
+      {/* Feedback Section */}
       <section className="w-full py-12 md:py-24 bg-muted/50">
         <div className="container mx-auto px-4 md:px-6">
           <h2 className="text-3xl font-bold text-center mb-12">
@@ -183,7 +178,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* FAQ Section */}
       <section className="w-full py-12 md:py-24">
         <div className="container mx-auto px-4 md:px-6">

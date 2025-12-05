@@ -53,13 +53,13 @@ export default async function InterviewPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="shadow-lg">
           <CardContent className="pt-6 flex flex-col items-center justify-center text-center">
-            <FileText className="h-12 w-12 text-blue-500 mb-4" />
+            <FileText className="h-12 w-12 text-primary mb-4" />
             <h2 className="text-2xl font-semibold mb-2">Technical Quiz</h2>
             <p className="text-muted-foreground mb-4">
               Test your knowledge with multiple-choice quizzes.
             </p>
             <Link href="/interview/mock" className="w-full">
-              <Button className="w-full" variant="outline">Start Quiz</Button>
+              <Button className="w-full">Start Quiz</Button>
             </Link>
           </CardContent>
         </Card>
