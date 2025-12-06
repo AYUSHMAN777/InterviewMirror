@@ -8,26 +8,26 @@ import { Button } from "./ui/button";
 const HeroSection = () => {
   const imageRef = useRef(null);
 
-  useEffect(() => {
-    const imageElement = imageRef.current;
+  // useEffect(() => {
+  //   const imageElement = imageRef.current;
 
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY;
-      const scrollThreshold = 100;
+  //   const handleScroll = () => {
+  //     const scrollPosition = window.scrollY;
+  //     const scrollThreshold = 100;
 
-      if (scrollPosition > scrollThreshold) {
-        imageElement.classList.add("scrolled");
-      } else {
-        imageElement.classList.remove("scrolled");
-      }
-    };
+  //     if (scrollPosition > scrollThreshold) {
+  //       imageElement.classList.add("scrolled");
+  //     } else {
+  //       imageElement.classList.remove("scrolled");
+  //     }
+  //   };
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  //   window.addEventListener("scroll", handleScroll);
+  //   return () => window.removeEventListener("scroll", handleScroll);
+  // }, []);
 
   return (
-    <section className="w-full pt-32 md:pt-40 pb-20 overflow-hidden mt-[-70px]">
+    <section className="w-full pt-32 md:pt-40 pb-20 overflow-hidden mt-[-47px]">
       <div className="container mx-auto px-4">
         {/* New Grid Layout: 1 column on small screens, 2 columns on large screens (lg:) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
